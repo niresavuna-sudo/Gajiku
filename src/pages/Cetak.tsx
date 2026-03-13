@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, PenTool, Printer, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useReactToPrint } from 'react-to-print';
+
+const getMonthNumber = (monthName: string) => {
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const index = months.indexOf(monthName);
+  return index !== -1 ? String(index + 1).padStart(2, '0') : '01';
+};
+
+const getLastDayOfMonth = (monthName: string, year: string) => {
+  const monthNumber = parseInt(getMonthNumber(monthName), 10);
+  const yearNumber = parseInt(year, 10);
+  return new Date(yearNumber, monthNumber, 0).getDate();
+};
 
 const SlipGaji = ({ data, sekolah, bulan, tahun }: { data: any, sekolah: any, bulan: string, tahun: string }) => {
   const uraianList = [
@@ -24,7 +35,7 @@ const SlipGaji = ({ data, sekolah, bulan, tahun }: { data: any, sekolah: any, bu
   }
 
   // Fill empty rows to make it look like a standard slip
-  const emptyRowsCount = Math.max(0, 15 - uraianList.length);
+  const emptyRowsCount = Math.max(0, 12 - uraianList.length);
   for (let i = 0; i < emptyRowsCount; i++) {
     uraianList.push({ name: "", value: 0 });
   }
@@ -110,7 +121,7 @@ const SlipGaji = ({ data, sekolah, bulan, tahun }: { data: any, sekolah: any, bu
         </div>
         <div className="text-center flex flex-col justify-between h-full">
           <div>
-            <div className="mb-1">{sekolah?.desa || '..........'}, 31 {bulan} {tahun}</div>
+            <div className="mb-1">{sekolah?.kecamatan || '..........'}, {getLastDayOfMonth(bulan, tahun)}/{getMonthNumber(bulan)}/{tahun}</div>
             <div className="mb-8">Bendahara</div>
           </div>
           <div>
@@ -127,7 +138,7 @@ const LembarTtd = ({ data, sekolah, bulan, tahun }: { data: any[], sekolah: any,
   const totalKeseluruhan = data.reduce((sum, item) => sum + item.gaji_bersih, 0);
 
   return (
-    <div className="w-full text-black bg-white" style={{ fontFamily: 'Arial, sans-serif', padding: '10mm' }}>
+    <div className="w-full text-black bg-white lembar-ttd-container" style={{ fontFamily: 'Arial, sans-serif', padding: '10mm' }}>
       <div className="text-center mb-6">
         <h2 className="font-bold text-lg uppercase">DAFTAR PENERIMAAN HONORARIUM</h2>
         <h3 className="font-bold text-md uppercase">{sekolah?.nama_sekolah || 'NAMA SEKOLAH'}</h3>
@@ -137,25 +148,34 @@ const LembarTtd = ({ data, sekolah, bulan, tahun }: { data: any[], sekolah: any,
       <table className="w-full border-collapse border border-black text-sm mb-8">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border border-black py-2 px-2 w-12 text-center">No.</th>
+            <th className="border border-black py-2 px-2 w-10 text-center">No.</th>
             <th className="border border-black py-2 px-2 text-left">Nama Pegawai</th>
-            <th className="border border-black py-2 px-2 text-right w-32">Jumlah Diterima</th>
-            <th className="border border-black py-2 px-2 w-48 text-center">Tanda Tangan</th>
+            <th className="border border-black py-2 px-2 text-right">Gaji Pokok</th>
+            <th className="border border-black py-2 px-2 text-right">Tunjangan/Insentif</th>
+            <th className="border border-black py-2 px-2 text-right">Potongan</th>
+            <th className="border border-black py-2 px-2 text-right">Gaji diterima</th>
+            <th className="border border-black py-2 px-2 w-32 text-center">Tanda Tangan</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((item, idx) => (
-            <tr key={idx}>
-              <td className="border border-black py-3 px-2 text-center">{idx + 1}</td>
-              <td className="border border-black py-3 px-2">{item.nama}</td>
-              <td className="border border-black py-3 px-2 text-right">Rp {item.gaji_bersih.toLocaleString('id-ID')}</td>
-              <td className="border border-black py-3 px-2 relative">
-                <span className="absolute top-1 left-2 text-xs text-gray-500">{idx + 1}.</span>
-              </td>
-            </tr>
-          ))}
+          {data.map((item, idx) => {
+            const tunjangan = (item.total_insentif || 0) + (item.nominal_tugas_tambahan || 0);
+            return (
+              <tr key={idx}>
+                <td className="border border-black py-3 px-2 text-center">{idx + 1}</td>
+                <td className="border border-black py-3 px-2">{item.nama}</td>
+                <td className="border border-black py-3 px-2 text-right">Rp {(item.gaji_pokok || 0).toLocaleString('id-ID')}</td>
+                <td className="border border-black py-3 px-2 text-right">Rp {tunjangan.toLocaleString('id-ID')}</td>
+                <td className="border border-black py-3 px-2 text-right">Rp {(item.potongan || 0).toLocaleString('id-ID')}</td>
+                <td className="border border-black py-3 px-2 text-right font-bold">Rp {item.gaji_bersih.toLocaleString('id-ID')}</td>
+                <td className="border border-black py-3 px-2 relative">
+                  <span className="absolute top-1 left-2 text-xs text-gray-500">{idx + 1}.</span>
+                </td>
+              </tr>
+            );
+          })}
           <tr className="bg-gray-100 font-bold">
-            <td colSpan={2} className="border border-black py-2 px-2 text-right">Total Keseluruhan</td>
+            <td colSpan={5} className="border border-black py-2 px-2 text-right">Total Keseluruhan</td>
             <td className="border border-black py-2 px-2 text-right">Rp {totalKeseluruhan.toLocaleString('id-ID')}</td>
             <td className="border border-black py-2 px-2"></td>
           </tr>
@@ -163,12 +183,18 @@ const LembarTtd = ({ data, sekolah, bulan, tahun }: { data: any[], sekolah: any,
       </table>
 
       <div className="flex justify-between text-sm mt-8 px-8">
-        <div className="text-center">
-          <div className="mb-16">Kepala Madrasah</div>
+        <div className="text-center flex flex-col justify-between">
+          <div>
+            <div className="mb-1 text-transparent select-none">Spacer</div>
+            <div className="mb-16">Kepala Madrasah</div>
+          </div>
           <div className="font-bold underline">{sekolah?.kepala_madrasah_nama || '.......................'}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-16">{sekolah?.desa || '..........'}, 31 {bulan} {tahun}<br/>Bendahara</div>
+        <div className="text-center flex flex-col justify-between">
+          <div>
+            <div className="mb-1">{sekolah?.kecamatan || '..........'}, {getLastDayOfMonth(bulan, tahun)}/{getMonthNumber(bulan)}/{tahun}</div>
+            <div className="mb-16">Bendahara</div>
+          </div>
           <div className="font-bold underline">{sekolah?.bendahara_nama || '.......................'}</div>
         </div>
       </div>
@@ -231,7 +257,7 @@ export function Cetak() {
       const { data, error } = await supabase
         .from('pegawai')
         .select('id, nama')
-        .order('nama', { ascending: true });
+        .order('created_at', { ascending: true });
       
       if (error) throw error;
       setPegawaiList(data || []);
@@ -250,7 +276,7 @@ export function Cetak() {
 
       let query = supabase
         .from('gaji_bulanan')
-        .select('*, pegawai(nama)')
+        .select('*, pegawai(nama, created_at)')
         .eq('bulan', selectedBulan)
         .eq('tahun', tahunAnggaran)
         .eq('is_approved', true);
@@ -298,8 +324,12 @@ export function Cetak() {
         };
       });
 
-      // Sort by name
-      formattedData.sort((a, b) => a.nama.localeCompare(b.nama));
+      // Sort by created_at
+      formattedData.sort((a, b) => {
+        const dateA = new Date(a.pegawai?.created_at || 0).getTime();
+        const dateB = new Date(b.pegawai?.created_at || 0).getTime();
+        return dateA - dateB;
+      });
 
       setGajiData(formattedData);
     } catch (error) {
@@ -309,30 +339,68 @@ export function Cetak() {
     }
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: activeTab === 'slip' ? `Slip_Gaji_${selectedBulan}_${tahunAnggaran}` : `Lembar_TTD_${selectedBulan}_${tahunAnggaran}`,
-  });
+  const handlePrint = () => {
+    if (!componentRef.current) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Pop-up diblokir oleh browser. Silakan izinkan pop-up (pop-up blocker) di pojok kanan atas browser Anda untuk menampilkan halaman cetak.");
+      return;
+    }
 
-  const isIframe = window !== window.top;
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(style => style.outerHTML)
+      .join('\n');
+
+    const content = componentRef.current.outerHTML;
+    const title = activeTab === 'slip' ? `Slip_Gaji_${selectedBulan}_${tahunAnggaran}` : `Lembar_TTD_${selectedBulan}_${tahunAnggaran}`;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          ${styles}
+          <style>
+            @media print {
+              @page { 
+                margin: 15mm 10mm 10mm 10mm; 
+                ${activeTab === 'ttd' ? 'size: landscape;' : 'size: portrait;'}
+              }
+              body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .print\\:shadow-none { box-shadow: none !important; }
+              #print-content-container { padding: 0 !important; width: 100% !important; min-height: auto !important; }
+              .lembar-ttd-container { padding: 0 !important; }
+            }
+            body { 
+              background-color: #f1f5f9; 
+              display: flex; 
+              justify-content: center; 
+              padding: 20px; 
+              font-family: Arial, sans-serif; 
+            }
+          </style>
+        </head>
+        <body>
+          ${content}
+          <script>
+            window.onload = () => {
+              setTimeout(() => {
+                window.print();
+              }, 800);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   return (
     <div className="space-y-6 print:space-y-0">
       <div className="print:hidden">
         <h2 className="text-2xl font-bold text-slate-800">Cetak Dokumen</h2>
         <p className="text-slate-500">Cetak slip gaji pegawai dan lembar tanda terima gaji.</p>
-        {isIframe && (
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-            <ExternalLink className="text-amber-600 mt-0.5 flex-shrink-0" size={20} />
-            <div>
-              <h4 className="font-medium text-amber-800">Fitur Cetak Diblokir?</h4>
-              <p className="text-sm text-amber-600 mt-1">
-                Jika jendela cetak tidak muncul saat tombol diklik, hal ini karena Anda sedang membuka aplikasi di dalam mode <i>preview</i>. 
-                Silakan buka aplikasi ini di tab baru dengan mengklik ikon panah di pojok kanan atas layar Anda, lalu coba cetak kembali.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none">
@@ -403,10 +471,11 @@ export function Cetak() {
             ) : (
               <div 
                 ref={componentRef}
+                id="print-content-container"
                 className="bg-white shadow-xl flex-shrink-0 print:shadow-none" 
                 style={{ 
-                  width: '210mm', 
-                  minHeight: '297mm', 
+                  width: activeTab === 'ttd' ? '297mm' : '210mm', 
+                  minHeight: activeTab === 'ttd' ? '210mm' : '297mm', 
                   padding: '10mm',
                   display: activeTab === 'slip' ? 'flex' : 'block',
                   flexWrap: 'wrap',
@@ -418,7 +487,7 @@ export function Cetak() {
               >
                 {activeTab === 'slip' ? (
                   gajiData.map((data, index) => (
-                    <div key={index} style={{ height: '133.5mm', width: gajiData.length === 1 ? '90mm' : 'calc(50% - 5mm)', pageBreakInside: 'avoid', marginTop: gajiData.length === 1 ? '20mm' : '0' }}>
+                    <div key={index} style={{ height: '120mm', width: gajiData.length === 1 ? '90mm' : 'calc(50% - 5mm)', pageBreakInside: 'avoid', marginTop: gajiData.length === 1 ? '20mm' : '0' }}>
                       <SlipGaji data={data} sekolah={sekolahData} bulan={selectedBulan} tahun={tahunAnggaran} />
                     </div>
                   ))

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Edit2, Trash2, X, Save } from 'lucide-react';
+import { Toast, ToastType } from '../components/Toast';
 
 const BULAN_LIST = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -20,8 +21,12 @@ export function PotonganGaji() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingPegawaiId, setDeletingPegawaiId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     fetchData();
@@ -129,12 +134,11 @@ export function PotonganGaji() {
       }
       
       setShowModal(false);
-      setSuccessMsg('Data potongan berhasil disimpan.');
-      setTimeout(() => setSuccessMsg(null), 5000);
+      showToast('Data potongan berhasil disimpan.', 'success');
       fetchData();
     } catch (error) {
       console.error('Error saving potongan:', error);
-      setErrorMsg('Gagal menyimpan data potongan.');
+      showToast('Gagal menyimpan data potongan.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -142,8 +146,6 @@ export function PotonganGaji() {
 
   const handleDelete = async () => {
     if (!deletingPegawaiId) return;
-    setErrorMsg(null);
-    setSuccessMsg(null);
     
     try {
       // Get all gaji records for this employee in the selected year
@@ -156,12 +158,11 @@ export function PotonganGaji() {
           .eq('id', record.id);
       }
       
-      setSuccessMsg('Data potongan berhasil dihapus.');
-      setTimeout(() => setSuccessMsg(null), 5000);
+      showToast('Data potongan berhasil dihapus.', 'success');
       fetchData();
     } catch (error) {
       console.error('Error deleting potongan:', error);
-      setErrorMsg('Gagal menghapus data potongan.');
+      showToast('Gagal menghapus data potongan.', 'error');
     } finally {
       setShowDeleteModal(false);
       setDeletingPegawaiId(null);
@@ -193,6 +194,13 @@ export function PotonganGaji() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
       {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

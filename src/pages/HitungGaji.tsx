@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit2, Trash2, Plus, X, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Toast, ToastType } from '../components/Toast';
 
 export function HitungGaji() {
   const [pegawaiList, setPegawaiList] = useState<any[]>([]);
@@ -10,8 +11,14 @@ export function HitungGaji() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
+
   const [selectedBulan, setSelectedBulan] = useState('Semua Bulan');
   const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear().toString());
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -145,10 +152,11 @@ export function HitungGaji() {
             };
           });
           
-          // Sort by name then month
+          // Sort by created_at then month
           combined.sort((a, b) => {
-            if (a.nama < b.nama) return -1;
-            if (a.nama > b.nama) return 1;
+            const indexA = pegawaiData.findIndex(p => p.id === a.pegawai_id);
+            const indexB = pegawaiData.findIndex(p => p.id === b.pegawai_id);
+            if (indexA !== indexB) return indexA - indexB;
             return 0;
           });
           
@@ -388,14 +396,15 @@ export function HitungGaji() {
 
       setShowEditModal(false);
       fetchData();
+      showToast('Data gaji berhasil disimpan!', 'success');
     } catch (error: any) {
       console.error('Error saving gaji bulanan:', error);
       if (error.message?.includes('tugas_tambahan_ids')) {
-        setDbError('Kolom tugas_tambahan_ids belum ada di tabel gaji_bulanan. Silakan jalankan script SQL berikut di Supabase SQL Editor:\n\nALTER TABLE public.gaji_bulanan ADD COLUMN IF NOT EXISTS tugas_tambahan_ids JSONB DEFAULT \'[]\'::jsonb;');
+        showToast('Kolom tugas_tambahan_ids belum ada di tabel gaji_bulanan. Silakan jalankan script SQL.', 'error');
       } else if (error.message?.includes('gaji_bulanan') || error.code === '42P01') {
-        setDbError('Tabel gaji_bulanan belum ada di database. Silakan jalankan script SQL berikut:\n\nCREATE TABLE public.gaji_bulanan (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  pegawai_id UUID REFERENCES public.pegawai(id) ON DELETE CASCADE,\n  bulan VARCHAR(20) NOT NULL,\n  tahun VARCHAR(4) NOT NULL,\n  jml_hadir NUMERIC DEFAULT 0,\n  nominal_insentif NUMERIC DEFAULT 3000,\n  total_insentif NUMERIC DEFAULT 0,\n  tugas_tambahan_id UUID REFERENCES public.tugas_tambahan(id) ON DELETE SET NULL,\n  tugas_tambahan_ids JSONB DEFAULT \'[]\'::jsonb,\n  nominal_tugas_tambahan NUMERIC DEFAULT 0,\n  potongan NUMERIC DEFAULT 0,\n  gaji_bersih NUMERIC DEFAULT 0,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL,\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone(\'utc\'::text, now()) NOT NULL,\n  UNIQUE(pegawai_id, bulan, tahun)\n);\nALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Enable all access" ON public.gaji_bulanan FOR ALL USING (true);');
+        showToast('Tabel gaji_bulanan belum ada di database. Silakan jalankan script SQL.', 'error');
       } else {
-        setDbError(`Gagal menyimpan data gaji. Error: ${error.message || 'Unknown error'}`);
+        showToast(`Gagal menyimpan data gaji. Error: ${error.message || 'Unknown error'}`, 'error');
       }
     }
   };
@@ -417,12 +426,11 @@ export function HitungGaji() {
         .eq('id', data.gaji_bulanan_id);
       
       if (error) throw error;
-      setSuccessMessage(`Berhasil menghapus data gaji ${data.nama}.`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      showToast(`Berhasil menghapus data gaji ${data.nama}.`, 'success');
       fetchData();
     } catch (error: any) {
       console.error('Error deleting gaji bulanan:', error);
-      setDbError(`Gagal menghapus data gaji. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menghapus data gaji. Error: ${error.message || 'Unknown error'}`, 'error');
     } finally {
       setShowDeleteModal(false);
       setDeletingRowId(null);
@@ -461,7 +469,6 @@ export function HitungGaji() {
     setShowConfirmModal(false);
     setIsProcessingAll(true);
     setDbError(null);
-    setSuccessMessage(null);
 
     try {
       const selectedData = combinedData.filter(d => selectedRows.includes(d.id));
@@ -522,8 +529,7 @@ export function HitungGaji() {
         }
       }
 
-      setSuccessMessage(`Berhasil meng-approve ${totalUpdated + totalInserted} data gaji.`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      showToast(`Berhasil meng-approve ${totalUpdated + totalInserted} data gaji.`, 'success');
       setSelectedRows([]);
       fetchData();
     } catch (error: any) {
@@ -542,10 +548,9 @@ ALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;
       `;
 
       if (errorMsg.includes('is_approved') || errorMsg.includes('RLS') || errorMsg.includes('policy') || errorMsg.includes('column') || errorMsg.includes('tugas_tambahan_ids')) {
-        const msg = `Gagal meng-approve data.\n\nError: ${errorMsg}\n\nSilakan jalankan script SQL berikut di Supabase SQL Editor:\n${sqlScript}`;
-        setDbError(msg);
+        showToast(`Gagal meng-approve data. Silakan jalankan script SQL.`, 'error');
       } else {
-        setDbError(`Gagal meng-approve data. Error: ${errorMsg}\n\nJika error berlanjut, coba jalankan script SQL perbaikan:\n${sqlScript}`);
+        showToast(`Gagal meng-approve data. Error: ${errorMsg}`, 'error');
       }
     } finally {
       setIsProcessingAll(false);
@@ -558,7 +563,6 @@ ALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;
     setShowUnapproveModal(false);
     setIsProcessingAll(true);
     setDbError(null);
-    setSuccessMessage(null);
 
     try {
       const selectedData = combinedData.filter(d => selectedRows.includes(d.id));
@@ -586,13 +590,12 @@ ALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;
         }
       }
 
-      setSuccessMessage(`Berhasil membatalkan approve (unapprove) ${totalUpdated} data gaji.`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      showToast(`Berhasil membatalkan approve (unapprove) ${totalUpdated} data gaji.`, 'success');
       setSelectedRows([]);
       fetchData();
     } catch (error: any) {
       console.error('Error unapproving gaji:', error);
-      setDbError(`Gagal membatalkan approve data. Error: ${error.message || JSON.stringify(error)}`);
+      showToast(`Gagal membatalkan approve data. Error: ${error.message || JSON.stringify(error)}`, 'error');
     } finally {
       setIsProcessingAll(false);
     }
@@ -600,6 +603,13 @@ ALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Hitung Gaji</h2>
         <p className="text-slate-500">Proses perhitungan gaji bulanan pegawai.</p>
@@ -775,16 +785,6 @@ ALTER TABLE public.gaji_bulanan ENABLE ROW LEVEL SECURITY;
                   Ya, Hapus
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-3">
-            <CheckCircle2 className="text-emerald-600 mt-0.5" size={20} />
-            <div>
-              <h4 className="font-medium text-emerald-800">Berhasil</h4>
-              <p className="text-sm text-emerald-600 mt-1">{successMessage}</p>
             </div>
           </div>
         )}

@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Building, Users, Briefcase, Edit2, Trash2, Plus, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Toast, ToastType } from '../components/Toast';
 
-export function DataAwal() {
+interface DataAwalProps {
+  setSubPath?: (path: string) => void;
+}
+
+export function DataAwal({ setSubPath }: DataAwalProps) {
   const [activeTab, setActiveTab] = useState<'sekolah' | 'pegawai' | 'tugas'>('sekolah');
 
   const [pegawaiList, setPegawaiList] = useState<any[]>([]);
   const [tugasList, setTugasList] = useState<any[]>([]);
   const [sekolahData, setSekolahData] = useState<any>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (setSubPath) {
+      if (activeTab === 'sekolah') setSubPath('Data Sekolah');
+      else if (activeTab === 'pegawai') setSubPath('Data Pegawai');
+      else if (activeTab === 'tugas') setSubPath('Tugas Tambahan');
+    }
+  }, [activeTab, setSubPath]);
 
   useEffect(() => {
     fetchData();
@@ -108,12 +121,18 @@ export function DataAwal() {
   const [showDeleteTugasModal, setShowDeleteTugasModal] = useState(false);
   const [tugasToDelete, setTugasToDelete] = useState<any>(null);
 
-  const [newPegawai, setNewPegawai] = useState({ nama: '', nip: '', ttl: '', alamat: '', kontak: '', status: 'Guru PNS', jab: '', tahunMasuk: '' });
+  const [newPegawai, setNewPegawai] = useState({ nama: '', nip: '', ttl: '', alamat: '', kontak: '', status: 'Guru PNS', jab: '', tahunMasuk: '', username: '', password: '' });
   const [newTugas, setNewTugas] = useState({ nama: '', nominal: '' });
+
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   const handleOpenAddPegawai = () => {
     setEditingPegawaiId(null);
-    setNewPegawai({ nama: '', nip: '', ttl: '', alamat: '', kontak: '', status: 'Guru PNS', jab: '', tahunMasuk: '' });
+    setNewPegawai({ nama: '', nip: '', ttl: '', alamat: '', kontak: '', status: 'Guru PNS', jab: '', tahunMasuk: '', username: '', password: '' });
     setShowPegawaiModal(true);
   };
 
@@ -126,7 +145,12 @@ export function DataAwal() {
   const handleAddPegawai = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      if (!editingPegawaiId && !newPegawai.password) {
+        showToast('Sandi harus diisi untuk pegawai baru', 'error');
+        return;
+      }
+
+      const payload: any = {
         nama: newPegawai.nama,
         nip: newPegawai.nip,
         tempat_tgl_lahir: newPegawai.ttl,
@@ -135,7 +159,12 @@ export function DataAwal() {
         kontak: newPegawai.kontak,
         status: newPegawai.status,
         jabatan: newPegawai.jab,
+        username: newPegawai.username,
       };
+
+      if (newPegawai.password) {
+        payload.password = newPegawai.password;
+      }
 
       if (editingPegawaiId !== null) {
         const { error } = await supabase
@@ -152,9 +181,10 @@ export function DataAwal() {
       
       setShowPegawaiModal(false);
       fetchData(); // Refresh data
+      showToast('Data pegawai berhasil disimpan!', 'success');
     } catch (error) {
       console.error('Error saving pegawai:', error);
-      alert('Gagal menyimpan data pegawai. Pastikan koneksi Supabase sudah diatur.');
+      showToast('Gagal menyimpan data pegawai. Pastikan koneksi Supabase sudah diatur.', 'error');
     }
   };
 
@@ -181,9 +211,10 @@ export function DataAwal() {
       setShowDeletePegawaiModal(false);
       setPegawaiToDelete(null);
       fetchData();
+      showToast('Data pegawai berhasil dihapus!', 'success');
     } catch (error: any) {
       console.error('Error deleting pegawai:', error);
-      alert(`Gagal menghapus data pegawai. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menghapus data pegawai. Error: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -229,9 +260,10 @@ export function DataAwal() {
       
       setShowTugasModal(false);
       fetchData();
+      showToast('Data tugas berhasil disimpan!', 'success');
     } catch (error: any) {
       console.error('Error saving tugas:', error);
-      alert(`Gagal menyimpan data tugas. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menyimpan data tugas. Error: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -256,9 +288,10 @@ export function DataAwal() {
       setShowDeleteTugasModal(false);
       setTugasToDelete(null);
       fetchData();
+      showToast('Data tugas berhasil dihapus!', 'success');
     } catch (error: any) {
       console.error('Error deleting tugas:', error);
-      alert(`Gagal menghapus data tugas. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menghapus data tugas. Error: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -277,11 +310,11 @@ export function DataAwal() {
           .insert([payload]);
         if (error) throw error;
       }
-      alert('Data sekolah berhasil disimpan!');
+      showToast('Data sekolah berhasil disimpan!', 'success');
       fetchData();
     } catch (error: any) {
       console.error('Error saving sekolah:', error);
-      alert(`Gagal menyimpan data sekolah. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menyimpan data sekolah. Error: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -291,6 +324,13 @@ export function DataAwal() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Data Awal</h2>
         <p className="text-slate-500">Kelola data master sekolah, pegawai, dan tugas tambahan.</p>
@@ -548,6 +588,16 @@ export function DataAwal() {
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Email / No. Tlp</label>
                   <input required type="text" value={newPegawai.kontak} onChange={e => setNewPegawai({...newPegawai, kontak: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                  <input required type="text" value={newPegawai.username || ''} onChange={e => setNewPegawai({...newPegawai, username: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Username login" />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Sandi {editingPegawaiId !== null && <span className="text-xs text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>}
+                  </label>
+                  <input type="password" value={newPegawai.password || ''} onChange={e => setNewPegawai({...newPegawai, password: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Sandi login" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Alamat</label>

@@ -58,7 +58,7 @@ export function Sidebar({ activeMenu, setActiveMenu, isOpen = true }: SidebarPro
         </ul>
       </nav>
       <div className="p-4 border-t border-slate-800 text-xs text-slate-500 text-center whitespace-nowrap">
-        &copy; 2026 EduPay System
+        @Desigh by Mard | Gajiku 2026
       </div>
     </div>
   );

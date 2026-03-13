@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Edit2, Trash2, Plus, X, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Toast, ToastType } from '../components/Toast';
 
 export function GajiPokok() {
   const [gajiList, setGajiList] = useState<any[]>([]);
   const [pegawaiList, setPegawaiList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     fetchData();
@@ -224,7 +231,7 @@ export function GajiPokok() {
 
   const handleDelete = (gaji: any) => {
     if (!gaji.gaji_id) {
-      alert('Data gaji belum diatur untuk pegawai ini.');
+      showToast('Data gaji belum diatur untuk pegawai ini.', 'error');
       return;
     }
     setGajiToDelete(gaji);
@@ -244,16 +251,17 @@ export function GajiPokok() {
       setShowDeleteModal(false);
       setGajiToDelete(null);
       fetchData();
+      showToast('Data gaji berhasil dihapus!', 'success');
     } catch (error: any) {
       console.error('Error deleting gaji pegawai:', error);
-      alert(`Gagal menghapus data gaji. Error: ${error.message || 'Unknown error'}`);
+      showToast(`Gagal menghapus data gaji. Error: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.pegawai_id) {
-      alert('Silakan pilih pegawai terlebih dahulu.');
+      showToast('Silakan pilih pegawai terlebih dahulu.', 'error');
       return;
     }
 
@@ -297,12 +305,13 @@ export function GajiPokok() {
       
       setShowModal(false);
       fetchData();
+      showToast('Data gaji berhasil disimpan!', 'success');
     } catch (error: any) {
       console.error('Error saving gaji pegawai:', error);
       if (error.message?.includes('jam_mengajar') || error.message?.includes('masa_kerja') || error.message?.includes('nominal_')) {
-        alert('Kolom baru belum ada di database. Silakan jalankan script SQL:\n\nALTER TABLE public.gaji_pegawai ADD COLUMN jam_mengajar NUMERIC DEFAULT 0;\nALTER TABLE public.gaji_pegawai ADD COLUMN masa_kerja NUMERIC DEFAULT 0;\nALTER TABLE public.gaji_pegawai ADD COLUMN nominal_masa_kerja NUMERIC DEFAULT 5000;\nALTER TABLE public.gaji_pegawai ADD COLUMN nominal_jam_mengajar NUMERIC DEFAULT 16000;');
+        showToast('Kolom baru belum ada di database. Silakan jalankan script SQL yang diperlukan.', 'error');
       } else {
-        alert(`Gagal menyimpan data gaji. Error: ${error.message || 'Unknown error'}`);
+        showToast(`Gagal menyimpan data gaji. Error: ${error.message || 'Unknown error'}`, 'error');
       }
     }
   };
@@ -313,6 +322,13 @@ export function GajiPokok() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Gaji Pokok & Tunjangan</h2>
         <p className="text-slate-500">Atur gaji pokok dan tunjangan untuk masing-masing pegawai.</p>

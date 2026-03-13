@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS pegawai (
     status TEXT,
     jabatan TEXT,
     tahun_masuk INTEGER,
+    username TEXT UNIQUE,
+    password TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -97,6 +99,8 @@ CREATE TABLE IF NOT EXISTS admin (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nama TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE,
+    password TEXT,
     role TEXT DEFAULT 'Admin Keuangan',
     status TEXT DEFAULT 'Aktif',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
