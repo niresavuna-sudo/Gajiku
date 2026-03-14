@@ -102,6 +102,7 @@ export default function App() {
     setLoggedInAdmin(admin);
     setIsAuthenticated(true);
     localStorage.setItem('adminSession', JSON.stringify(admin));
+    setActiveMenu('dashboard');
   };
 
   const handleLogout = () => {

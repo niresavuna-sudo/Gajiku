@@ -3,6 +3,17 @@ import { Edit2, Trash2, Plus, X, AlertCircle, CheckCircle2, XCircle } from 'luci
 import { supabase } from '../lib/supabase';
 import { Toast, ToastType } from '../components/Toast';
 
+const getPreviousMonthAndYear = (currentMonth: string, currentYear: string) => {
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const index = months.indexOf(currentMonth);
+  if (index === -1) return null;
+  
+  if (index === 0) {
+    return { month: 'Desember', year: (parseInt(currentYear) - 1).toString() };
+  }
+  return { month: months[index - 1], year: currentYear };
+};
+
 export function HitungGaji() {
   const [pegawaiList, setPegawaiList] = useState<any[]>([]);
   const [combinedData, setCombinedData] = useState<any[]>([]);
@@ -29,6 +40,7 @@ export function HitungGaji() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingData, setEditingData] = useState<any>(null);
+  const [riwayatTugasBulanLalu, setRiwayatTugasBulanLalu] = useState<string>('');
   const [formData, setFormData] = useState({
     pegawai_id: '',
     nama_pegawai: '',
@@ -220,7 +232,7 @@ export function HitungGaji() {
     }
   };
 
-  const handleOpenEdit = (rowId: string) => {
+  const handleOpenEdit = async (rowId: string) => {
     const data = combinedData.find(d => d.id === rowId);
     if (!data) return;
     if (data.is_approved) {
@@ -243,6 +255,45 @@ export function HitungGaji() {
       gaji_bersih: data.gaji_bersih ? Number(data.gaji_bersih).toLocaleString('id-ID') : '0',
       gaji_pokok: data.gaji_pokok
     });
+
+    // Fetch previous month's tasks
+    setRiwayatTugasBulanLalu('Memuat...');
+    const currentMonth = data.bulan || selectedBulan;
+    const prevMonthInfo = getPreviousMonthAndYear(currentMonth, selectedTahun);
+    
+    if (prevMonthInfo) {
+      try {
+        const { data: prevGaji } = await supabase
+          .from('gaji_bulanan')
+          .select('tugas_tambahan_ids, tugas_tambahan_id')
+          .eq('pegawai_id', data.pegawai_id)
+          .eq('bulan', prevMonthInfo.month)
+          .eq('tahun', prevMonthInfo.year)
+          .single();
+          
+        if (prevGaji) {
+          let prevTugasIds: string[] = [];
+          if (prevGaji.tugas_tambahan_ids && Array.isArray(prevGaji.tugas_tambahan_ids)) {
+            prevTugasIds = prevGaji.tugas_tambahan_ids;
+          } else if (prevGaji.tugas_tambahan_id) {
+            prevTugasIds = [prevGaji.tugas_tambahan_id];
+          }
+          
+          const prevNamaTugasList = prevTugasIds.map(id => {
+            const t = tugasTambahanList.find(x => x.id === id);
+            return t ? t.nama_tugas : '';
+          }).filter(Boolean);
+          
+          setRiwayatTugasBulanLalu(prevNamaTugasList.length > 0 ? prevNamaTugasList.join(', ') : 'Tidak ada tugas tambahan');
+        } else {
+          setRiwayatTugasBulanLalu('Tidak ada data bulan lalu');
+        }
+      } catch (e) {
+        setRiwayatTugasBulanLalu('Tidak ada data bulan lalu');
+      }
+    } else {
+      setRiwayatTugasBulanLalu('');
+    }
     
     setShowEditModal(true);
   };
@@ -1035,6 +1086,13 @@ alter publication supabase_realtime add table public.gaji_bulanan;`}</pre>
                     <Plus size={12} /> Tambah Tugas
                   </button>
                 </div>
+                
+                {riwayatTugasBulanLalu && (
+                  <div className="mb-2 p-2 bg-blue-50 border border-blue-100 rounded-lg text-xs">
+                    <span className="font-semibold text-blue-800">Riwayat bulan lalu:</span>{' '}
+                    <span className="text-blue-600">{riwayatTugasBulanLalu}</span>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   {formData.tugas_tambahan_ids.map((tugasId, index) => (

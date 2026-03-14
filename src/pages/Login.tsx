@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, User, Loader2, School, ArrowRight } from 'lucide-react';
+import { Lock, User, Loader2, School, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (admin: any) => void;
 }
 
 const BACKGROUND_IMAGES = [
-  'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?q=80&w=1920&auto=format&fit=crop', // Mosque interior
-  'https://images.unsplash.com/photo-1609599006351-8264cb3b4d59?q=80&w=1920&auto=format&fit=crop', // Quran
-  'https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=1920&auto=format&fit=crop', // Kids studying
-  'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1920&auto=format&fit=crop', // Books/Library
-  'https://images.unsplash.com/photo-1585036156171-384164a8c675?q=80&w=1920&auto=format&fit=crop'  // Islamic architecture
+  'https://picsum.photos/seed/madrasah/1920/1080',
+  'https://picsum.photos/seed/education/1920/1080',
+  'https://picsum.photos/seed/mosque/1920/1080',
+  'https://picsum.photos/seed/quran/1920/1080',
+  'https://picsum.photos/seed/library/1920/1080'
 ];
 
 export function Login({ onLogin }: LoginProps) {
@@ -22,6 +22,7 @@ export function Login({ onLogin }: LoginProps) {
   const [schoolName, setSchoolName] = useState('Sistem Penggajian');
   const [logoUrl, setLogoUrl] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -142,13 +143,18 @@ export function Login({ onLogin }: LoginProps) {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-white drop-shadow-md">
           {schoolName}
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-200 drop-shadow">
-          Masuk ke akun administrator Anda
-        </p>
+        <h3 className="mt-2 text-center text-2xl font-bold text-emerald-400 drop-shadow-md">
+          Gajiku
+        </h3>
       </div>
 
       <div className="relative z-10 mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-xl shadow-slate-200/50 sm:rounded-2xl sm:px-10 border border-slate-100">
+          <div className="mb-6 text-center">
+            <h4 className="text-xl font-bold text-slate-900">Login</h4>
+            <p className="text-sm text-slate-500 mt-1">Masuk ke akun administrator Anda</p>
+          </div>
+          
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-md">
@@ -188,13 +194,22 @@ export function Login({ onLogin }: LoginProps) {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-lg py-2.5 border"
+                  className="focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 pr-10 sm:text-sm border-slate-300 rounded-lg py-2.5 border"
                   placeholder="Masukkan sandi"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-slate-400 hover:text-emerald-600 focus:outline-none transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
